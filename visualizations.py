@@ -122,18 +122,19 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                 )
             
             try:
-                # Generate interactive HTML
+                # Generate both HTML and SVG formats
                 html_str = fig.to_html(
                     include_plotlyjs='cdn',
                     full_html=False,
-                    config={'displayModeBar': True,
-                           'responsive': True,
-                           'displaylogo': False}
+                    config={'displayModeBar': True, 'responsive': True}
                 )
                 
                 # Generate SVG
                 svg_str = fig.to_image(format="svg").decode()
                 
+                if not svg_str:
+                    raise VisualizationError("Failed to generate SVG image")
+                    
                 return html_str, svg_str, None
             except Exception as e:
                 logger.error(f"Error generating visualization formats: {str(e)}")
