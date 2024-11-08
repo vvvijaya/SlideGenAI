@@ -8,7 +8,9 @@ import json
 def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str, y_column: str, 
                         color_column: str = None, title: str = None, 
                         x_label: str = None, y_label: str = None,
-                        theme: str = "plotly") -> str:
+                        theme: str = "plotly", show_grid: bool = True,
+                        show_legend: bool = True, orientation: str = "vertical",
+                        animation_frame: str = None) -> str:
     """
     Create a visualization based on the specified type and return it as a base64 encoded SVG.
     """
@@ -20,28 +22,38 @@ def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str, y_col
         y_label = y_label or y_column
         title = title or f"{viz_type.title()} Chart"
         
+        # Handle orientation
+        if orientation == "horizontal" and viz_type in ["bar", "scatter", "line"]:
+            x_column, y_column = y_column, x_column
+            x_label, y_label = y_label, x_label
+        
         # Create visualization based on type
+        kwargs = {
+            "title": title,
+            "labels": {x_column: x_label, y_column: y_label},
+            "animation_frame": animation_frame,
+            "template": theme
+        }
+        
         if viz_type == "bar":
-            fig = px.bar(data, x=x_column, y=y_column, color=color_column,
-                        title=title, labels={x_column: x_label, y_column: y_label})
+            fig = px.bar(data, x=x_column, y=y_column, color=color_column, **kwargs)
+            if orientation == "horizontal":
+                fig.update_layout(barmode='relative')
         elif viz_type == "line":
-            fig = px.line(data, x=x_column, y=y_column, color=color_column,
-                         title=title, labels={x_column: x_label, y_column: y_label})
+            fig = px.line(data, x=x_column, y=y_column, color=color_column, **kwargs)
         elif viz_type == "scatter":
-            fig = px.scatter(data, x=x_column, y=y_column, color=color_column,
-                            title=title, labels={x_column: x_label, y_column: y_label})
+            fig = px.scatter(data, x=x_column, y=y_column, color=color_column, **kwargs)
         elif viz_type == "pie":
             fig = px.pie(data, values=y_column, names=x_column, title=title)
         elif viz_type == "heatmap":
             try:
                 pivot_data = pd.pivot_table(data, values=y_column, index=x_column, 
                                           columns=color_column, aggfunc='mean')
-                fig = px.imshow(pivot_data, title=title)
+                fig = px.imshow(pivot_data, title=title, aspect="auto")
             except Exception as e:
                 raise ValueError(f"Error creating heatmap: {str(e)}")
         elif viz_type == "box":
-            fig = px.box(data, x=x_column, y=y_column, color=color_column,
-                        title=title, labels={x_column: x_label, y_column: y_label})
+            fig = px.box(data, x=x_column, y=y_column, color=color_column, **kwargs)
         
         if fig:
             # Update layout for better presentation view
@@ -50,27 +62,41 @@ def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str, y_col
                 height=500,
                 font=dict(size=14),
                 margin=dict(l=50, r=50, t=50, b=50),
-                template=theme,
-                showlegend=True if color_column else False,
+                showlegend=show_legend,
                 hovermode='closest',
                 hoverlabel=dict(bgcolor="white", font_size=12)
             )
             
-            # Convert to SVG using plotly's to_image method with error handling
-            try:
-                # First attempt: direct SVG conversion
-                svg_str = fig.to_svg()
-                if not svg_str:
-                    raise ValueError("SVG conversion failed")
-            except Exception:
-                try:
-                    # Second attempt: Generate SVG through HTML
-                    html_str = fig.to_html(include_plotlyjs=True, full_html=False)
-                    return base64.b64encode(html_str.encode()).decode()
-                except Exception as e:
-                    raise ValueError(f"Failed to convert visualization to SVG: {str(e)}")
+            # Update grid settings
+            fig.update_xaxes(showgrid=show_grid)
+            fig.update_yaxes(showgrid=show_grid)
             
-            return base64.b64encode(svg_str.encode()).decode()
+            # Handle animation settings
+            if animation_frame:
+                fig.update_layout(
+                    updatemenus=[{
+                        "type": "buttons",
+                        "showactive": False,
+                        "buttons": [
+                            {"label": "Play",
+                             "method": "animate",
+                             "args": [None, {"frame": {"duration": 500, "redraw": True},
+                                           "fromcurrent": True}]},
+                            {"label": "Pause",
+                             "method": "animate",
+                             "args": [[None], {"frame": {"duration": 0, "redraw": False},
+                                             "mode": "immediate"}]}
+                        ]
+                    }]
+                )
+            
+            try:
+                # First attempt: Generate SVG directly
+                svg_str = fig.to_html(include_plotlyjs=True, full_html=False)
+                return base64.b64encode(svg_str.encode()).decode()
+            except Exception as e:
+                print(f"Error converting to SVG: {str(e)}")
+                return None
         
         return None
     
@@ -89,4 +115,4 @@ def get_categorical_columns(df: pd.DataFrame) -> list:
 def get_available_themes() -> list:
     """Return list of available plotly themes."""
     return ['plotly', 'plotly_white', 'plotly_dark', 'ggplot2', 
-            'seaborn', 'simple_white']
+            'seaborn', 'simple_white', 'presentation']

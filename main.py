@@ -85,7 +85,6 @@ def main():
                 
                 # Get numeric and categorical columns from selected columns only
                 selected_numeric_cols = [col for col in selected_columns if col in get_numeric_columns(df)]
-                selected_categorical_cols = [col for col in selected_columns if col in get_categorical_columns(df)]
                 
                 for i in range(num_visualizations):
                     with viz_container:
@@ -121,8 +120,8 @@ def main():
                         
                         color_col = None
                         if viz_type in ["bar", "line", "scatter", "box", "heatmap"]:
-                            # Only show selected categorical columns for color options
-                            color_options = ["None"] + selected_categorical_cols
+                            # Update: Use group_cols for color options as requested
+                            color_options = ["None"] + group_cols
                             color_col = st.selectbox(
                                 "Select color/group column (optional)",
                                 options=color_options,
@@ -131,12 +130,41 @@ def main():
                             if color_col == "None":
                                 color_col = None
                         
+                        # Advanced Options
+                        with st.expander("Advanced Options"):
+                            # Add animation frames if applicable
+                            if viz_type in ["scatter", "bar", "line"]:
+                                animation_col = st.selectbox(
+                                    "Animation frame column (optional)",
+                                    options=["None"] + group_cols,
+                                    key=f"animation_{i}"
+                                )
+                                if animation_col == "None":
+                                    animation_col = None
+                            else:
+                                animation_col = None
+                            
+                            # Add additional styling options
+                            show_grid = st.checkbox("Show Grid", value=True, key=f"grid_{i}")
+                            show_legend = st.checkbox("Show Legend", value=True, key=f"legend_{i}")
+                            
+                            if viz_type in ["bar", "scatter", "line"]:
+                                orientation = st.selectbox(
+                                    "Chart Orientation",
+                                    options=["vertical", "horizontal"],
+                                    key=f"orientation_{i}"
+                                )
+                            else:
+                                orientation = "vertical"
+                        
                         # Preview visualization
                         if st.button("Preview", key=f"preview_{i}"):
                             viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
                             viz_base64 = create_visualization(
                                 viz_data, viz_type, x_col, y_col, color_col,
-                                title, x_label, y_label, theme
+                                title, x_label, y_label, theme,
+                                show_grid=show_grid, show_legend=show_legend,
+                                orientation=orientation, animation_frame=animation_col
                             )
                             if viz_base64:
                                 st.image(f"data:image/svg+xml;base64,{viz_base64}")
