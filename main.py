@@ -64,6 +64,12 @@ def main():
                 # Visualization Section
                 st.header("3. Configure Visualizations")
                 
+                # Only proceed with visualizations if columns are selected
+                selected_columns = group_cols + agg_cols
+                if not selected_columns:
+                    st.warning("Please select columns for grouping and/or aggregation in Section 2 before configuring visualizations.")
+                    return
+
                 viz_container = st.container()
                 num_visualizations = st.number_input("Number of visualizations", min_value=0, max_value=5, value=1)
                 
@@ -77,6 +83,10 @@ def main():
                 
                 visualizations = []
                 
+                # Get numeric and categorical columns from selected columns only
+                selected_numeric_cols = [col for col in selected_columns if col in get_numeric_columns(df)]
+                selected_categorical_cols = [col for col in selected_columns if col in get_categorical_columns(df)]
+                
                 for i in range(num_visualizations):
                     with viz_container:
                         st.subheader(f"Visualization {i+1}")
@@ -88,9 +98,6 @@ def main():
                             help="Choose the type of visualization"
                         )
                         
-                        numeric_cols = get_numeric_columns(df)
-                        categorical_cols = get_categorical_columns(df)
-                        
                         # Title and labels
                         title = st.text_input("Chart title", key=f"title_{i}")
                         
@@ -98,24 +105,27 @@ def main():
                         with col1:
                             x_col = st.selectbox(
                                 "Select X-axis column",
-                                options=df.columns.tolist(),
+                                options=selected_columns,  # Show only selected columns
                                 key=f"x_col_{i}"
                             )
                             x_label = st.text_input("X-axis label", value=x_col, key=f"x_label_{i}")
                         
                         with col2:
+                            y_options = selected_numeric_cols if viz_type != "pie" else selected_columns
                             y_col = st.selectbox(
                                 "Select Y-axis column",
-                                options=numeric_cols,
+                                options=y_options,  # Show only selected numeric columns
                                 key=f"y_col_{i}"
                             )
                             y_label = st.text_input("Y-axis label", value=y_col, key=f"y_label_{i}")
                         
                         color_col = None
                         if viz_type in ["bar", "line", "scatter", "box", "heatmap"]:
+                            # Only show selected categorical columns for color options
+                            color_options = ["None"] + selected_categorical_cols
                             color_col = st.selectbox(
                                 "Select color/group column (optional)",
-                                options=["None"] + categorical_cols,
+                                options=color_options,
                                 key=f"color_col_{i}"
                             )
                             if color_col == "None":
