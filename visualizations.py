@@ -3,16 +3,16 @@ import plotly.graph_objects as go
 import pandas as pd
 import base64
 from io import StringIO
-import json
 
 def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str, y_column: str, 
                         color_column: str = None, title: str = None, 
                         x_label: str = None, y_label: str = None,
                         theme: str = "plotly", show_grid: bool = True,
                         show_legend: bool = True, orientation: str = "vertical",
-                        animation_frame: str = None) -> str:
+                        animation_frame: str = None) -> tuple:
     """
-    Create a visualization based on the specified type and return it as a base64 encoded SVG.
+    Create a visualization and return it as HTML and a static image fallback.
+    Returns a tuple of (html_content, error_message).
     """
     try:
         fig = None
@@ -51,7 +51,7 @@ def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str, y_col
                                           columns=color_column, aggfunc='mean')
                 fig = px.imshow(pivot_data, title=title, aspect="auto")
             except Exception as e:
-                raise ValueError(f"Error creating heatmap: {str(e)}")
+                return None, f"Error creating heatmap: {str(e)}"
         elif viz_type == "box":
             fig = px.box(data, x=x_column, y=y_column, color=color_column, **kwargs)
         
@@ -91,18 +91,20 @@ def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str, y_col
                 )
             
             try:
-                # First attempt: Generate SVG directly
-                svg_str = fig.to_html(include_plotlyjs=True, full_html=False)
-                return base64.b64encode(svg_str.encode()).decode()
+                # Generate interactive HTML
+                html_str = fig.to_html(
+                    include_plotlyjs='cdn',
+                    full_html=False,
+                    config={'displayModeBar': True}
+                )
+                return html_str, None
             except Exception as e:
-                print(f"Error converting to SVG: {str(e)}")
-                return None
+                return None, f"Error generating visualization: {str(e)}"
         
-        return None
+        return None, "Failed to create visualization"
     
     except Exception as e:
-        print(f"Error creating visualization: {str(e)}")
-        return None
+        return None, f"Error creating visualization: {str(e)}"
 
 def get_numeric_columns(df: pd.DataFrame) -> list:
     """Return list of numeric columns in the dataframe."""

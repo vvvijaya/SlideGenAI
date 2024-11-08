@@ -104,7 +104,7 @@ def main():
                         with col1:
                             x_col = st.selectbox(
                                 "Select X-axis column",
-                                options=selected_columns,  # Show only selected columns
+                                options=selected_columns,
                                 key=f"x_col_{i}"
                             )
                             x_label = st.text_input("X-axis label", value=x_col, key=f"x_label_{i}")
@@ -113,14 +113,13 @@ def main():
                             y_options = selected_numeric_cols if viz_type != "pie" else selected_columns
                             y_col = st.selectbox(
                                 "Select Y-axis column",
-                                options=y_options,  # Show only selected numeric columns
+                                options=y_options,
                                 key=f"y_col_{i}"
                             )
                             y_label = st.text_input("Y-axis label", value=y_col, key=f"y_label_{i}")
                         
                         color_col = None
                         if viz_type in ["bar", "line", "scatter", "box", "heatmap"]:
-                            # Update: Use group_cols for color options as requested
                             color_options = ["None"] + group_cols
                             color_col = st.selectbox(
                                 "Select color/group column (optional)",
@@ -160,17 +159,19 @@ def main():
                         # Preview visualization
                         if st.button("Preview", key=f"preview_{i}"):
                             viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
-                            viz_base64 = create_visualization(
+                            viz_html, error_msg = create_visualization(
                                 viz_data, viz_type, x_col, y_col, color_col,
                                 title, x_label, y_label, theme,
                                 show_grid=show_grid, show_legend=show_legend,
                                 orientation=orientation, animation_frame=animation_col
                             )
-                            if viz_base64:
-                                st.image(f"data:image/svg+xml;base64,{viz_base64}")
-                                visualizations.append(viz_base64)
+                            
+                            if viz_html:
+                                # Display interactive visualization
+                                st.components.v1.html(viz_html, height=600)
+                                visualizations.append(viz_html)
                             else:
-                                st.error("Failed to create visualization. Please check your settings.")
+                                st.error(error_msg or "Failed to create visualization. Please check your settings.")
 
                 # Generate Presentation
                 if st.button("Generate Presentation"):
