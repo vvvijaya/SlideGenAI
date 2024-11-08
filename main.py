@@ -52,15 +52,16 @@ async def create_visualization_with_loading(viz_data: pd.DataFrame, viz_type: st
     """Create visualization with loading state and error handling."""
     try:
         with st.spinner("Generating visualization..."):
-            return await create_visualization(
+            viz_html, viz_svg = await create_visualization(
                 viz_data, viz_type, x_col, y_col, color_col,
                 title, x_label, y_label, theme,
                 show_grid=show_grid, show_legend=show_legend,
                 orientation=orientation, animation_frame=animation_col
             )
+            return viz_html, viz_svg, None
     except Exception as e:
         handle_error(e, "Error creating visualization")
-        return None, str(e)
+        return None, None, str(e)
 
 def main():
     try:
@@ -252,7 +253,7 @@ def main():
                                     try:
                                         viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
                                         if viz_data is not None:
-                                            viz_html, error_msg = asyncio.run(create_visualization_with_loading(
+                                            viz_html, viz_svg, error_msg = asyncio.run(create_visualization_with_loading(
                                                 viz_data, viz_type, x_col, y_col, color_col,
                                                 title, x_label, y_label, theme,
                                                 show_grid=show_grid, show_legend=show_legend,
@@ -261,7 +262,10 @@ def main():
                                             
                                             if viz_html:
                                                 st.components.v1.html(viz_html, height=600)
-                                                st.session_state.visualizations.append(viz_html)
+                                                st.session_state.visualizations.append({
+                                                    'html': viz_html,
+                                                    'svg': viz_svg
+                                                })
                                             else:
                                                 st.error(error_msg or "Failed to create visualization. Please check your settings.")
                                         else:

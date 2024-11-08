@@ -8,21 +8,23 @@ import os
 import base64
 from io import BytesIO
 
-def add_image_to_slide(slide, image_base64: str, left: float, top: float, width: float, height: float):
-    """Add a base64 encoded SVG image to the slide."""
+def add_image_to_slide(slide, image_data: str, left: float, top: float, width: float, height: float):
+    """Add an SVG image to the slide."""
     try:
-        image_data = base64.b64decode(image_base64)
-        image_stream = BytesIO(image_data)
-        slide.shapes.add_picture(image_stream, Inches(left), Inches(top), Inches(width), Inches(height))
-    except Exception as e:
-        # If image addition fails, add a text box with error message
+        # Convert SVG to shape
         left = Inches(left)
         top = Inches(top)
         width = Inches(width)
         height = Inches(height)
+        
+        # Add SVG as embedded XML
+        pic = slide.shapes.add_picture(BytesIO(image_data.encode()), left, top, width, height)
+        return pic
+    except Exception as e:
+        # If image addition fails, add a text box with error message
         txBox = slide.shapes.add_textbox(left, top, width, height)
         tf = txBox.text_frame
-        tf.text = "Visualization could not be added to the slide"
+        tf.text = f"Visualization could not be added: {str(e)}"
 
 def create_presentation(data: pd.DataFrame, summaries: list, visualizations: list = None) -> str:
     """
@@ -51,8 +53,8 @@ def create_presentation(data: pd.DataFrame, summaries: list, visualizations: lis
             title = slide.shapes.title
             title.text = f"Visualization {idx + 1}"
             
-            # Add visualization image
-            add_image_to_slide(slide, viz, left=1, top=2, width=8, height=5)
+            # Add visualization image using SVG data
+            add_image_to_slide(slide, viz['svg'], left=1, top=2, width=8, height=5)
 
     # Data Slides
     for i in range(0, len(data), 5):  # 5 rows per slide

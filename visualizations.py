@@ -21,10 +21,10 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                       x_label: str = None, y_label: str = None,
                       theme: str = "plotly", show_grid: bool = True,
                       show_legend: bool = True, orientation: str = "vertical",
-                      animation_frame: str = None) -> Tuple[Optional[str], Optional[str]]:
+                      animation_frame: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    Create a visualization asynchronously and return it as HTML and a static image fallback.
-    Returns a tuple of (html_content, error_message).
+    Create a visualization asynchronously and return it as HTML and SVG.
+    Returns a tuple of (html_content, svg_content, error_message).
     """
     try:
         # Validate input parameters
@@ -76,7 +76,7 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
             elif viz_type == "heatmap":
                 try:
                     pivot_data = pd.pivot_table(data, values=y_column, index=x_column, 
-                                              columns=color_column, aggfunc='mean')
+                                             columns=color_column, aggfunc='mean')
                     fig = px.imshow(pivot_data, title=title, aspect="auto")
                 except Exception as e:
                     logger.error(f"Error creating heatmap: {str(e)}")
@@ -122,7 +122,7 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                 )
             
             try:
-                # Generate interactive HTML with fallback
+                # Generate interactive HTML
                 html_str = fig.to_html(
                     include_plotlyjs='cdn',
                     full_html=False,
@@ -130,18 +130,22 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                            'responsive': True,
                            'displaylogo': False}
                 )
-                return html_str, None
+                
+                # Generate SVG
+                svg_str = fig.to_image(format="svg").decode()
+                
+                return html_str, svg_str, None
             except Exception as e:
-                logger.error(f"Error generating HTML: {str(e)}")
-                return None, f"Error generating visualization: {str(e)}"
+                logger.error(f"Error generating visualization formats: {str(e)}")
+                return None, None, f"Error generating visualization: {str(e)}"
         
         except Exception as e:
             logger.error(f"Error creating {viz_type} visualization: {str(e)}\n{traceback.format_exc()}")
-            return None, f"Error creating visualization: {str(e)}"
+            return None, None, f"Error creating visualization: {str(e)}"
     
     except Exception as e:
         logger.error(f"Visualization error: {str(e)}\n{traceback.format_exc()}")
-        return None, f"Error: {str(e)}"
+        return None, None, f"Error: {str(e)}"
 
 def get_numeric_columns(df: pd.DataFrame) -> list:
     """Return list of numeric columns in the dataframe."""
