@@ -34,6 +34,8 @@ def initialize_session_state():
     try:
         if 'ai_summaries' not in st.session_state:
             st.session_state.ai_summaries = []
+        if 'visualizations' not in st.session_state:
+            st.session_state.visualizations = []
         if 'error_log' not in st.session_state:
             st.session_state.error_log = []
         if 'processing_state' not in st.session_state:
@@ -175,7 +177,6 @@ def main():
                         help="Choose a theme for all visualizations"
                     )
                     
-                    visualizations = []
                     selected_numeric_cols = [col for col in selected_columns if col in get_numeric_columns(df)]
                     
                     for i in range(num_visualizations):
@@ -260,7 +261,7 @@ def main():
                                             
                                             if viz_html:
                                                 st.components.v1.html(viz_html, height=600)
-                                                visualizations.append(viz_html)
+                                                st.session_state.visualizations.append(viz_html)
                                             else:
                                                 st.error(error_msg or "Failed to create visualization. Please check your settings.")
                                         else:
@@ -281,8 +282,8 @@ def main():
                                         summaries = generate_summary(processed_data, custom_prompt)
                                         st.session_state.ai_summaries = summaries
                                     
-                                    if summaries and visualizations:
-                                        pptx_file = create_presentation(processed_data, summaries, visualizations)
+                                    if summaries and st.session_state.visualizations:
+                                        pptx_file = create_presentation(processed_data, summaries, st.session_state.visualizations)
                                         
                                         st.success("Presentation generated successfully!")
                                         with open(pptx_file, "rb") as file:
@@ -298,16 +299,10 @@ def main():
                                     st.error("Error processing data. Please check your settings and try again.")
                             except Exception as e:
                                 handle_error(e, "Error generating presentation")
-                                st.warning("Please try again or contact support if the issue persists.")
-
             except Exception as e:
-                handle_error(e, "Error processing file")
-                st.info("Please check your file and try again")
-
+                handle_error(e, "Error processing uploaded file")
     except Exception as e:
         handle_error(e, "Application error")
-        st.error("An unexpected error occurred. Please refresh the page and try again.")
-        logger.critical(f"Critical application error: {str(e)}\n{traceback.format_exc()}")
 
 if __name__ == "__main__":
     main()
