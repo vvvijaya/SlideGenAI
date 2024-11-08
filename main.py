@@ -5,6 +5,7 @@ from presentation_generator import create_presentation
 from ai_summarizer import generate_summary
 from utils import load_data, validate_file
 from styles import apply_styles
+from visualizations import create_visualization, get_numeric_columns, get_categorical_columns
 
 def main():
     apply_styles()
@@ -49,6 +50,57 @@ def main():
                     )
                     agg_methods[col] = method
 
+                # Visualization Section
+                st.header("3. Configure Visualizations")
+                
+                viz_container = st.container()
+                num_visualizations = st.number_input("Number of visualizations", min_value=0, max_value=5, value=1)
+                
+                visualizations = []
+                
+                for i in range(num_visualizations):
+                    with viz_container:
+                        st.subheader(f"Visualization {i+1}")
+                        
+                        viz_type = st.selectbox(
+                            "Select visualization type",
+                            options=["bar", "line", "scatter", "pie"],
+                            key=f"viz_type_{i}"
+                        )
+                        
+                        numeric_cols = get_numeric_columns(df)
+                        categorical_cols = get_categorical_columns(df)
+                        
+                        x_col = st.selectbox(
+                            "Select X-axis column",
+                            options=df.columns.tolist(),
+                            key=f"x_col_{i}"
+                        )
+                        
+                        y_col = st.selectbox(
+                            "Select Y-axis column",
+                            options=numeric_cols,
+                            key=f"y_col_{i}"
+                        )
+                        
+                        color_col = None
+                        if viz_type != "pie":
+                            color_col = st.selectbox(
+                                "Select color column (optional)",
+                                options=["None"] + categorical_cols,
+                                key=f"color_col_{i}"
+                            )
+                            if color_col == "None":
+                                color_col = None
+                        
+                        # Preview visualization
+                        if st.button("Preview", key=f"preview_{i}"):
+                            viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
+                            viz_base64 = create_visualization(viz_data, viz_type, x_col, y_col, color_col)
+                            if viz_base64:
+                                st.image(f"data:image/png;base64,{viz_base64}")
+                                visualizations.append(viz_base64)
+
                 # Generate Presentation
                 if st.button("Generate Presentation"):
                     with st.spinner("Processing data..."):
@@ -58,8 +110,8 @@ def main():
                         # Generate AI summaries
                         summaries = generate_summary(processed_data)
                         
-                        # Create presentation
-                        pptx_file = create_presentation(processed_data, summaries)
+                        # Create presentation with visualizations
+                        pptx_file = create_presentation(processed_data, summaries, visualizations)
                         
                         # Offer download
                         st.success("Presentation generated successfully!")
