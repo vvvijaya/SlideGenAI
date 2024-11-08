@@ -13,6 +13,10 @@ def main():
     
     st.title("AI-Powered Presentation Generator")
     st.write("Upload your data and create professional presentations automatically")
+    
+    # Store AI summaries in session state
+    if 'ai_summaries' not in st.session_state:
+        st.session_state.ai_summaries = []
 
     # File Upload Section
     st.header("1. Upload Data")
@@ -60,6 +64,26 @@ def main():
                         key=f"agg_{col}"
                     )
                     agg_methods[col] = method
+
+                # AI Summary Generation
+                if st.button("Generate AI Summary"):
+                    with st.spinner("Generating AI insights..."):
+                        try:
+                            # Process data first
+                            processed_data = process_data(df, group_cols, agg_methods)
+                            # Generate summaries
+                            summaries = generate_summary(processed_data)
+                            st.session_state.ai_summaries = summaries
+                            st.success("AI insights generated successfully!")
+                        except Exception as e:
+                            st.error(f"Error generating AI insights: {str(e)}")
+                            st.session_state.ai_summaries = []
+
+                # Display AI Summaries in expandable section
+                if st.session_state.ai_summaries:
+                    with st.expander("View AI Insights", expanded=True):
+                        for idx, summary in enumerate(st.session_state.ai_summaries, 1):
+                            st.markdown(f"{idx}. {summary}")
 
                 # Visualization Section
                 st.header("3. Configure Visualizations")
@@ -179,10 +203,13 @@ def main():
                         # Process data
                         processed_data = process_data(df, group_cols, agg_methods)
                         
-                        # Generate AI summaries
-                        summaries = generate_summary(processed_data)
+                        # Use stored AI summaries or generate new ones if not available
+                        summaries = st.session_state.ai_summaries
+                        if not summaries:
+                            summaries = generate_summary(processed_data)
+                            st.session_state.ai_summaries = summaries
                         
-                        # Create presentation with visualizations
+                        # Create presentation with visualizations and summaries
                         pptx_file = create_presentation(processed_data, summaries, visualizations)
                         
                         # Offer download
