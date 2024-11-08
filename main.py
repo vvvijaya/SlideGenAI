@@ -5,7 +5,8 @@ from presentation_generator import create_presentation
 from ai_summarizer import generate_summary
 from utils import load_data, validate_file
 from styles import apply_styles
-from visualizations import create_visualization, get_numeric_columns, get_categorical_columns
+from visualizations import (create_visualization, get_numeric_columns, 
+                          get_categorical_columns, get_available_themes)
 
 def main():
     apply_styles()
@@ -15,9 +16,19 @@ def main():
 
     # File Upload Section
     st.header("1. Upload Data")
-    uploaded_file = st.file_uploader("Choose a CSV or Excel file", type=['csv', 'xlsx'])
+    uploaded_file = st.file_uploader(
+        "Choose a CSV or Excel file", 
+        type=['csv', 'xlsx'],
+        help="Maximum file size: 200MB"
+    )
 
     if uploaded_file is not None:
+        # Validate file first
+        is_valid, error_message = validate_file(uploaded_file)
+        if not is_valid:
+            st.error(error_message)
+            return
+
         try:
             # Load and validate data
             df = load_data(uploaded_file)
@@ -56,6 +67,14 @@ def main():
                 viz_container = st.container()
                 num_visualizations = st.number_input("Number of visualizations", min_value=0, max_value=5, value=1)
                 
+                # Global visualization settings
+                st.subheader("Global Visualization Settings")
+                theme = st.selectbox(
+                    "Select theme",
+                    options=get_available_themes(),
+                    help="Choose a theme for all visualizations"
+                )
+                
                 visualizations = []
                 
                 for i in range(num_visualizations):
@@ -64,29 +83,38 @@ def main():
                         
                         viz_type = st.selectbox(
                             "Select visualization type",
-                            options=["bar", "line", "scatter", "pie"],
-                            key=f"viz_type_{i}"
+                            options=["bar", "line", "scatter", "pie", "heatmap", "box"],
+                            key=f"viz_type_{i}",
+                            help="Choose the type of visualization"
                         )
                         
                         numeric_cols = get_numeric_columns(df)
                         categorical_cols = get_categorical_columns(df)
                         
-                        x_col = st.selectbox(
-                            "Select X-axis column",
-                            options=df.columns.tolist(),
-                            key=f"x_col_{i}"
-                        )
+                        # Title and labels
+                        title = st.text_input("Chart title", key=f"title_{i}")
                         
-                        y_col = st.selectbox(
-                            "Select Y-axis column",
-                            options=numeric_cols,
-                            key=f"y_col_{i}"
-                        )
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            x_col = st.selectbox(
+                                "Select X-axis column",
+                                options=df.columns.tolist(),
+                                key=f"x_col_{i}"
+                            )
+                            x_label = st.text_input("X-axis label", value=x_col, key=f"x_label_{i}")
+                        
+                        with col2:
+                            y_col = st.selectbox(
+                                "Select Y-axis column",
+                                options=numeric_cols,
+                                key=f"y_col_{i}"
+                            )
+                            y_label = st.text_input("Y-axis label", value=y_col, key=f"y_label_{i}")
                         
                         color_col = None
-                        if viz_type != "pie":
+                        if viz_type in ["bar", "line", "scatter", "box", "heatmap"]:
                             color_col = st.selectbox(
-                                "Select color column (optional)",
+                                "Select color/group column (optional)",
                                 options=["None"] + categorical_cols,
                                 key=f"color_col_{i}"
                             )
@@ -96,10 +124,15 @@ def main():
                         # Preview visualization
                         if st.button("Preview", key=f"preview_{i}"):
                             viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
-                            viz_base64 = create_visualization(viz_data, viz_type, x_col, y_col, color_col)
+                            viz_base64 = create_visualization(
+                                viz_data, viz_type, x_col, y_col, color_col,
+                                title, x_label, y_label, theme
+                            )
                             if viz_base64:
-                                st.image(f"data:image/png;base64,{viz_base64}")
+                                st.image(f"data:image/svg+xml;base64,{viz_base64}")
                                 visualizations.append(viz_base64)
+                            else:
+                                st.error("Failed to create visualization. Please check your settings.")
 
                 # Generate Presentation
                 if st.button("Generate Presentation"):
@@ -124,7 +157,8 @@ def main():
                             )
 
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.error(f"Error processing file: {str(e)}")
+            st.info("Please check your file and try again")
 
 if __name__ == "__main__":
     main()
