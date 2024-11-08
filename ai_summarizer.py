@@ -5,6 +5,11 @@ import streamlit as st
 from typing import List, Optional
 import time
 from tenacity import retry, stop_after_attempt, wait_exponential
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AIError(Exception):
     """Custom exception for AI-related errors"""
@@ -16,19 +21,23 @@ def call_openai_api(messages: List[dict], max_tokens: int = 150, temperature: fl
     Make API call to OpenAI with retry logic and error handling.
     """
     try:
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI()  # Create client instance
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature
         )
         return response.choices[0].message.content
-    except openai.error.AuthenticationError:
-        raise AIError("Invalid API key. Please check your OpenAI API key.")
-    except openai.error.RateLimitError:
+    except openai.APIError as e:
+        raise AIError(f"OpenAI API error: {str(e)}")
+    except openai.RateLimitError:
         raise AIError("Rate limit exceeded. Please try again later.")
+    except openai.APIConnectionError:
+        raise AIError("Failed to connect to OpenAI API. Please check your internet connection.")
     except Exception as e:
-        raise AIError(f"Error calling OpenAI API: {str(e)}")
+        logger.error(f"Unexpected error: {str(e)}")
+        raise AIError(f"Unexpected error: {str(e)}")
 
 def prepare_data_summary(df: pd.DataFrame) -> str:
     """
@@ -51,6 +60,7 @@ def prepare_data_summary(df: pd.DataFrame) -> str:
         
         return "\n".join(summary)
     except Exception as e:
+        logger.error(f"Error preparing data summary: {str(e)}")
         raise AIError(f"Error preparing data summary: {str(e)}")
 
 def generate_summary(data: pd.DataFrame) -> List[str]:
@@ -69,8 +79,6 @@ def generate_summary(data: pd.DataFrame) -> List[str]:
         raise AIError("OpenAI API key not found in environment variables")
 
     try:
-        openai.api_key = api_key
-        
         # Prepare data summary
         data_summary = prepare_data_summary(data)
         
@@ -95,5 +103,6 @@ def generate_summary(data: pd.DataFrame) -> List[str]:
         st.error(str(e))
         return ["Unable to generate AI summary: " + str(e)]
     except Exception as e:
+        logger.error(f"Unexpected error in summary generation: {str(e)}")
         st.error(f"Unexpected error in summary generation: {str(e)}")
         return ["An unexpected error occurred while generating the summary."]
