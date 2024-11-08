@@ -63,7 +63,7 @@ def prepare_data_summary(df: pd.DataFrame) -> str:
         logger.error(f"Error preparing data summary: {str(e)}")
         raise AIError(f"Error preparing data summary: {str(e)}")
 
-def generate_summary(data: pd.DataFrame) -> List[str]:
+def generate_summary(data: pd.DataFrame, custom_prompt: Optional[str] = None) -> List[str]:
     """
     Generate AI-powered summaries from the processed data using OpenAI API.
     Includes enhanced error handling and retry logic.
@@ -82,10 +82,12 @@ def generate_summary(data: pd.DataFrame) -> List[str]:
         # Prepare data summary
         data_summary = prepare_data_summary(data)
         
-        # Create messages for API call
+        # Use custom prompt if provided, otherwise use default
+        analysis_prompt = custom_prompt if custom_prompt else "Please analyze this data and provide key insights"
+        
         messages = [
             {"role": "system", "content": "You are a data analyst expert. Provide 3-5 key insights from the following data."},
-            {"role": "user", "content": f"Please analyze this data and provide key insights:\n{data_summary}"}
+            {"role": "user", "content": f"{analysis_prompt}:\n{data_summary}"}
         ]
         
         # Make API call with retry logic

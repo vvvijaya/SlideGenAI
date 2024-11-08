@@ -101,12 +101,19 @@ def main():
                         )
                         agg_methods[col] = method
 
+                    # Add custom prompt for AI analysis
+                    custom_prompt = st.text_area(
+                        "Custom prompt for AI analysis (optional)",
+                        value="Analyze this data and provide key insights",
+                        help="Enter your specific instructions for the AI analysis"
+                    )
+
                     # AI Summary Generation with error handling
                     if st.button("Generate AI Summary"):
                         with st.spinner("Generating AI insights..."):
                             try:
                                 processed_data = process_data(df, group_cols, agg_methods)
-                                summaries = generate_summary(processed_data)
+                                summaries = generate_summary(processed_data, custom_prompt)
                                 st.session_state.ai_summaries = summaries
                                 st.success("AI insights generated successfully!")
                             except Exception as e:
@@ -236,7 +243,7 @@ def main():
                                 
                                 summaries = st.session_state.ai_summaries
                                 if not summaries:
-                                    summaries = generate_summary(processed_data)
+                                    summaries = generate_summary(processed_data, custom_prompt)
                                     st.session_state.ai_summaries = summaries
                                 
                                 pptx_file = create_presentation(processed_data, summaries, visualizations)
