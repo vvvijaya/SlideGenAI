@@ -46,19 +46,19 @@ def initialize_session_state():
         st.stop()
 
 async def create_visualization_with_loading(viz_data: pd.DataFrame, viz_type: str, x_col: str, y_col: str,
-                                         color_col: Optional[str], title: str, x_label: str, y_label: str,
-                                         theme: str, show_grid: bool, show_legend: bool,
-                                         orientation: str, animation_col: Optional[str]) -> tuple:
+                                          color_col: Optional[str], title: str, x_label: str, y_label: str,
+                                          theme: str, show_grid: bool, show_legend: bool,
+                                          orientation: str, animation_col: Optional[str]) -> tuple:
     """Create visualization with loading state and error handling."""
     try:
         with st.spinner("Generating visualization..."):
-            viz_html, viz_svg = await create_visualization(
+            viz_html, viz_svg, error = await create_visualization(
                 viz_data, viz_type, x_col, y_col, color_col,
                 title, x_label, y_label, theme,
                 show_grid=show_grid, show_legend=show_legend,
                 orientation=orientation, animation_frame=animation_col
             )
-            return viz_html, viz_svg, None
+            return viz_html, viz_svg, error
     except Exception as e:
         handle_error(e, "Error creating visualization")
         return None, None, str(e)
@@ -271,7 +271,7 @@ def main():
                                         else:
                                             st.error("Failed to process data for visualization. Please check your settings.")
                                     except Exception as e:
-                                        handle_error(e, "Error previewing visualization")
+                                        handle_error(e, f"Error previewing visualization")
                         except Exception as e:
                             handle_error(e, f"Error configuring visualization {i+1}")
 
