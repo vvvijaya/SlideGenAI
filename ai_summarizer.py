@@ -41,18 +41,19 @@ def call_openai_api(messages: List[dict], max_tokens: int = 150, temperature: fl
 
 def prepare_data_summary(df: pd.DataFrame) -> str:
     """
-    Prepare a concise summary of the data for the AI.
+    Prepare a concise summary of the grouped/aggregated data for the AI.
     """
     try:
         summary = []
+        summary.append(f"Grouped/Aggregated Data Analysis:")
         summary.append(f"Columns: {', '.join(df.columns)}")
-        summary.append(f"Number of rows: {len(df)}")
+        summary.append(f"Number of groups: {len(df)}")
         
         # Add basic statistics for numeric columns
         numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
         if not numeric_cols.empty:
             stats = df[numeric_cols].agg(['mean', 'min', 'max']).round(2)
-            summary.append("\nNumeric column statistics:")
+            summary.append("\nNumeric column statistics (after grouping/aggregation):")
             for col in numeric_cols:
                 summary.append(f"{col}: mean={stats.loc['mean', col]}, "
                              f"min={stats.loc['min', col]}, "
@@ -79,14 +80,14 @@ def generate_summary(data: pd.DataFrame, custom_prompt: Optional[str] = None) ->
         raise AIError("OpenAI API key not found in environment variables")
 
     try:
-        # Prepare data summary
+        # Prepare data summary with grouping information
         data_summary = prepare_data_summary(data)
         
         # Use custom prompt if provided, otherwise use default
-        analysis_prompt = custom_prompt if custom_prompt else "Please analyze this data and provide key insights"
+        analysis_prompt = custom_prompt if custom_prompt else "Please analyze this grouped/aggregated data and provide key insights"
         
         messages = [
-            {"role": "system", "content": "You are a data analyst expert. Provide 3-5 key insights from the following data."},
+            {"role": "system", "content": "You are a data analyst expert. Analyze the grouped/aggregated data and provide 3-5 key insights."},
             {"role": "user", "content": f"{analysis_prompt}:\n{data_summary}"}
         ]
         
