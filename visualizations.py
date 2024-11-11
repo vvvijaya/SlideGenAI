@@ -17,14 +17,14 @@ class VisualizationError(Exception):
     pass
 
 async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str, y_column: str, 
-                      color_column: str = None, title: str = None, 
-                      x_label: str = None, y_label: str = None,
+                      color_column: Optional[str] = None, title: Optional[str] = None, 
+                      x_label: Optional[str] = None, y_label: Optional[str] = None,
                       theme: str = "plotly", show_grid: bool = True,
                       show_legend: bool = True, orientation: str = "vertical",
-                      animation_frame: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+                      animation_frame: Optional[str] = None) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
-    Create a visualization asynchronously and return it as HTML and static image.
-    Returns a tuple of (html_content, image_content, error_message).
+    Create a visualization asynchronously and return it as HTML and SVG.
+    Returns a tuple of (html_content, svg_content, png_content, error_message).
     """
     try:
         # Validate input parameters
@@ -76,7 +76,7 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
             elif viz_type == "heatmap":
                 try:
                     pivot_data = pd.pivot_table(data, values=y_column, index=x_column, 
-                                             columns=color_column, aggfunc='mean')
+                                            columns=color_column, aggfunc='mean')
                     fig = px.imshow(pivot_data, title=title, aspect="auto")
                 except Exception as e:
                     logger.error(f"Error creating heatmap: {str(e)}")
@@ -129,24 +129,22 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                     config={'displayModeBar': True, 'responsive': True}
                 )
                 
-                # Generate SVG format for static image
-                fig.write_image("temp.svg")
-                with open("temp.svg", "rb") as f:
-                    svg_content = f.read()
-                img_base64 = base64.b64encode(svg_content).decode()
+                # Generate SVG format
+                svg_bytes = fig.to_image(format="svg")
+                svg_base64 = base64.b64encode(svg_bytes).decode()
                 
-                return html_str, img_base64, None
+                return html_str, svg_base64, None, None  # Return all four expected values
             except Exception as e:
                 logger.error(f"Error generating visualization formats: {str(e)}")
-                return None, None, f"Error generating visualization: {str(e)}"
+                return None, None, None, f"Error generating visualization: {str(e)}"
         
         except Exception as e:
             logger.error(f"Error creating {viz_type} visualization: {str(e)}\n{traceback.format_exc()}")
-            return None, None, f"Error creating visualization: {str(e)}"
+            return None, None, None, f"Error creating visualization: {str(e)}"
     
     except Exception as e:
         logger.error(f"Visualization error: {str(e)}\n{traceback.format_exc()}")
-        return None, None, f"Error: {str(e)}"
+        return None, None, None, f"Error: {str(e)}"
 
 def get_numeric_columns(df: pd.DataFrame) -> list:
     """Return list of numeric columns in the dataframe."""

@@ -39,7 +39,7 @@ def add_image_to_slide(slide, image_data: str, left: float, top: float, width: f
         tf = txBox.text_frame
         tf.text = f"Visualization could not be added: {str(e)}"
 
-def create_presentation(data: pd.DataFrame, summaries: list, visualizations: list = None) -> str:
+def create_presentation(data: pd.DataFrame, summaries: list, visualizations: Optional[list] = None) -> str:
     """
     Create a PowerPoint presentation with the processed data, AI summaries, and visualizations.
     """
