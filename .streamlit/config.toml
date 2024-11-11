@@ -6,6 +6,9 @@ maxUploadSize = 200
 enableXsrfProtection = false
 enableCORS = false
 
+[browser]
+gatherUsageStats = true
+
 [theme]
 primaryColor = "#FF4B4B"
 backgroundColor = "#FFFFFF"

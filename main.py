@@ -9,7 +9,6 @@ from visualizations import (create_visualization, get_numeric_columns,
                           get_categorical_columns, get_available_themes)
 import asyncio
 import logging
-from typing import Optional
 import traceback
 import sys
 
@@ -40,37 +39,23 @@ def initialize_session_state():
             st.session_state.error_log = []
         if 'processing_state' not in st.session_state:
             st.session_state.processing_state = None
+        logger.info("Session state initialized successfully")
     except Exception as e:
-        handle_error(e, "Error initializing session state")
+        logger.error(f"Error initializing session state: {str(e)}")
         st.error("Failed to initialize application state. Please refresh the page.")
         st.stop()
 
-async def create_visualization_with_loading(viz_data: pd.DataFrame, viz_type: str, x_col: str, y_col: str,
-                                          color_col: Optional[str], title: str, x_label: str, y_label: str,
-                                          theme: str, show_grid: bool, show_legend: bool,
-                                          orientation: str, animation_col: Optional[str]) -> tuple:
-    """Create visualization with loading state and error handling."""
-    try:
-        with st.spinner("Generating visualization..."):
-            viz_html, viz_svg, viz_png, error = await create_visualization(
-                viz_data, viz_type, x_col, y_col, color_col,
-                title, x_label, y_label, theme,
-                show_grid=show_grid, show_legend=show_legend,
-                orientation=orientation, animation_frame=animation_col
-            )
-            return viz_html, viz_svg, viz_png, error
-    except Exception as e:
-        handle_error(e, "Error creating visualization")
-        return None, None, None, str(e)
-
 def main():
     try:
+        logger.info("Starting Streamlit application")
+        
         # Initialize session state
         initialize_session_state()
         
         # Apply styles with error handling
         try:
             apply_styles()
+            logger.info("Styles applied successfully")
         except Exception as e:
             handle_error(e, "Error applying styles")
         
@@ -88,6 +73,7 @@ def main():
 
         if uploaded_file is not None:
             try:
+                logger.info(f"Processing uploaded file: {uploaded_file.name}")
                 # Validate file first
                 is_valid, error_message = validate_file(uploaded_file)
                 if not is_valid:
@@ -140,6 +126,7 @@ def main():
                             try:
                                 processed_data = process_data(df, group_cols, agg_methods)
                                 if processed_data is not None:
+                                    logger.info("Generating AI summaries")
                                     summaries = generate_summary(processed_data, custom_prompt)
                                     if summaries and not any("error" in s.lower() for s in summaries):
                                         st.session_state.ai_summaries = summaries
@@ -151,15 +138,14 @@ def main():
                             except Exception as e:
                                 handle_error(e, "Error generating AI insights")
                                 st.session_state.ai_summaries = []
-                                st.warning("Please try again with different settings or contact support if the issue persists.")
 
-                    # Display AI Summaries with error handling
+                    # Display AI Summaries
                     if st.session_state.ai_summaries:
                         with st.expander("View AI Insights", expanded=True):
                             for idx, summary in enumerate(st.session_state.ai_summaries, 1):
                                 st.markdown(f"{idx}. {summary}")
 
-                    # Visualization Section with improved error handling
+                    # Visualization Section
                     st.header("3. Configure Visualizations")
                     
                     selected_columns = group_cols + list(agg_methods.keys())
@@ -177,8 +163,8 @@ def main():
                         options=get_available_themes(),
                         help="Choose a theme for all visualizations"
                     )
-                    
-                    selected_numeric_cols = [col for col in selected_columns if col in get_numeric_columns(df)]
+
+                    selected_numeric_cols = get_numeric_columns(df)
                     
                     for i in range(num_visualizations):
                         try:
@@ -188,8 +174,7 @@ def main():
                                 viz_type = st.selectbox(
                                     "Select visualization type",
                                     options=["bar", "line", "scatter", "pie", "heatmap", "box"],
-                                    key=f"viz_type_{i}",
-                                    help="Choose the type of visualization"
+                                    key=f"viz_type_{i}"
                                 )
                                 
                                 title = st.text_input("Chart title", key=f"title_{i}")
@@ -212,6 +197,7 @@ def main():
                                     )
                                     y_label = st.text_input("Y-axis label", value=y_col, key=f"y_label_{i}")
                                 
+                                # Handle color column selection
                                 color_col = None
                                 if viz_type in ["bar", "line", "scatter", "box", "heatmap"]:
                                     color_options = ["None"] + group_cols
@@ -222,7 +208,7 @@ def main():
                                     )
                                     if color_col == "None":
                                         color_col = None
-                                
+
                                 # Advanced Options
                                 with st.expander("Advanced Options"):
                                     if viz_type in ["scatter", "bar", "line"]:
@@ -247,18 +233,21 @@ def main():
                                         )
                                     else:
                                         orientation = "vertical"
-                                
-                                # Preview visualization with enhanced error handling
+
+                                # Preview visualization
                                 if st.button("Preview", key=f"preview_{i}"):
                                     try:
+                                        logger.info(f"Generating visualization {i+1}")
                                         viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
                                         if viz_data is not None:
-                                            viz_html, viz_svg, viz_png, error_msg = asyncio.run(create_visualization_with_loading(
-                                                viz_data, viz_type, x_col, y_col, color_col,
-                                                title, x_label, y_label, theme,
-                                                show_grid=show_grid, show_legend=show_legend,
-                                                orientation=orientation, animation_col=animation_col
-                                            ))
+                                            viz_html, viz_svg, viz_png, error_msg = asyncio.run(
+                                                create_visualization(
+                                                    viz_data, viz_type, x_col, y_col, color_col,
+                                                    title, x_label, y_label, theme,
+                                                    show_grid=show_grid, show_legend=show_legend,
+                                                    orientation=orientation, animation_frame=animation_col
+                                                )
+                                            )
                                             
                                             if viz_html:
                                                 st.components.v1.html(viz_html, height=600)
@@ -272,13 +261,15 @@ def main():
                                             st.error("Failed to process data for visualization. Please check your settings.")
                                     except Exception as e:
                                         handle_error(e, f"Error previewing visualization")
+
                         except Exception as e:
                             handle_error(e, f"Error configuring visualization {i+1}")
 
-                    # Generate Presentation with enhanced error handling
+                    # Generate Presentation
                     if st.button("Generate Presentation"):
                         with st.spinner("Processing data and generating presentation..."):
                             try:
+                                logger.info("Generating presentation")
                                 processed_data = process_data(df, group_cols, agg_methods)
                                 if processed_data is not None:
                                     summaries = st.session_state.ai_summaries
@@ -298,13 +289,15 @@ def main():
                                                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                                             )
                                     else:
-                                        st.error("Please generate AI insights and create at least one visualization before generating the presentation.")
+                                        st.warning("Please generate AI insights and at least one visualization before creating the presentation.")
                                 else:
-                                    st.error("Error processing data. Please check your settings and try again.")
+                                    st.error("Failed to process data for presentation. Please check your settings.")
                             except Exception as e:
                                 handle_error(e, "Error generating presentation")
+
             except Exception as e:
-                handle_error(e, "Error processing uploaded file")
+                handle_error(e, "Error processing file")
+
     except Exception as e:
         handle_error(e, "Application error")
 
