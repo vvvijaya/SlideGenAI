@@ -129,11 +129,11 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                     config={'displayModeBar': True, 'responsive': True}
                 )
                 
-                # Generate SVG format
+                # Generate SVG format for static presentation
                 svg_bytes = fig.to_image(format="svg")
                 svg_base64 = base64.b64encode(svg_bytes).decode()
                 
-                return html_str, svg_base64, None, None  # Return all four expected values
+                return html_str, svg_base64, None, None
             except Exception as e:
                 logger.error(f"Error generating visualization formats: {str(e)}")
                 return None, None, None, f"Error generating visualization: {str(e)}"
