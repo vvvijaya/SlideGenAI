@@ -52,16 +52,16 @@ async def create_visualization_with_loading(viz_data: pd.DataFrame, viz_type: st
     """Create visualization with loading state and error handling."""
     try:
         with st.spinner("Generating visualization..."):
-            viz_html, viz_svg, error = await create_visualization(
+            viz_html, viz_svg, viz_png, error = await create_visualization(
                 viz_data, viz_type, x_col, y_col, color_col,
                 title, x_label, y_label, theme,
                 show_grid=show_grid, show_legend=show_legend,
                 orientation=orientation, animation_frame=animation_col
             )
-            return viz_html, viz_svg, error
+            return viz_html, viz_svg, viz_png, error
     except Exception as e:
         handle_error(e, "Error creating visualization")
-        return None, None, str(e)
+        return None, None, None, str(e)
 
 def main():
     try:
@@ -253,7 +253,7 @@ def main():
                                     try:
                                         viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
                                         if viz_data is not None:
-                                            viz_html, viz_svg, error_msg = asyncio.run(create_visualization_with_loading(
+                                            viz_html, viz_svg, viz_png, error_msg = asyncio.run(create_visualization_with_loading(
                                                 viz_data, viz_type, x_col, y_col, color_col,
                                                 title, x_label, y_label, theme,
                                                 show_grid=show_grid, show_legend=show_legend,

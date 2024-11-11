@@ -11,15 +11,28 @@ from io import BytesIO
 def add_image_to_slide(slide, image_data: str, left: float, top: float, width: float, height: float):
     """Add an SVG image to the slide."""
     try:
-        # Convert SVG to shape
+        # Convert base64 string to bytes
+        image_bytes = base64.b64decode(image_data)
+        
+        # Create a temporary file for the SVG
+        temp_svg = tempfile.NamedTemporaryFile(delete=False, suffix='.svg')
+        temp_svg.write(image_bytes)
+        temp_svg.close()
+        
+        # Add image to slide
         left = Inches(left)
         top = Inches(top)
         width = Inches(width)
         height = Inches(height)
         
-        # Add SVG as embedded XML
-        pic = slide.shapes.add_picture(BytesIO(image_data.encode()), left, top, width, height)
-        return pic
+        try:
+            pic = slide.shapes.add_picture(temp_svg.name, left, top, width, height)
+            os.unlink(temp_svg.name)
+            return pic
+        except Exception as e:
+            os.unlink(temp_svg.name)
+            raise e
+            
     except Exception as e:
         # If image addition fails, add a text box with error message
         txBox = slide.shapes.add_textbox(left, top, width, height)

@@ -2,7 +2,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import base64
-from io import StringIO
+from io import StringIO, BytesIO
 import asyncio
 import traceback
 import logging
@@ -23,8 +23,8 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                       show_legend: bool = True, orientation: str = "vertical",
                       animation_frame: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    Create a visualization asynchronously and return it as HTML and SVG.
-    Returns a tuple of (html_content, svg_content, error_message).
+    Create a visualization asynchronously and return it as HTML and static image.
+    Returns a tuple of (html_content, image_content, error_message).
     """
     try:
         # Validate input parameters
@@ -122,20 +122,20 @@ async def create_visualization(data: pd.DataFrame, viz_type: str, x_column: str,
                 )
             
             try:
-                # Generate both HTML and SVG formats
+                # Generate HTML format
                 html_str = fig.to_html(
                     include_plotlyjs='cdn',
                     full_html=False,
                     config={'displayModeBar': True, 'responsive': True}
                 )
                 
-                # Generate SVG
-                svg_str = fig.to_image(format="svg").decode()
+                # Generate SVG format for static image
+                fig.write_image("temp.svg")
+                with open("temp.svg", "rb") as f:
+                    svg_content = f.read()
+                img_base64 = base64.b64encode(svg_content).decode()
                 
-                if not svg_str:
-                    raise VisualizationError("Failed to generate SVG image")
-                    
-                return html_str, svg_str, None
+                return html_str, img_base64, None
             except Exception as e:
                 logger.error(f"Error generating visualization formats: {str(e)}")
                 return None, None, f"Error generating visualization: {str(e)}"
