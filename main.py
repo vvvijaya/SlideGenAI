@@ -240,7 +240,7 @@ def main():
                                         logger.info(f"Generating visualization {i+1}")
                                         viz_data = process_data(df, group_cols, agg_methods) if group_cols else df
                                         if viz_data is not None:
-                                            viz_html, viz_svg, viz_png, error_msg = asyncio.run(
+                                            chart_data, error_msg = asyncio.run(
                                                 create_visualization(
                                                     viz_data, viz_type, x_col, y_col, color_col,
                                                     title, x_label, y_label, theme,
@@ -249,12 +249,17 @@ def main():
                                                 )
                                             )
                                             
-                                            if viz_html:
-                                                st.components.v1.html(viz_html, height=600)
-                                                st.session_state.visualizations.append({
-                                                    'html': viz_html,
-                                                    'svg': viz_svg
-                                                })
+                                            if chart_data:
+                                                st.session_state.visualizations.append(chart_data)
+                                                # Create a preview using Streamlit's native charting
+                                                st.write(chart_data['title'])
+                                                if viz_type in ['bar', 'line']:
+                                                    if viz_type == 'bar':
+                                                        st.bar_chart(data=viz_data, x=x_col, y=y_col)
+                                                    else:
+                                                        st.line_chart(data=viz_data, x=x_col, y=y_col)
+                                                else:
+                                                    st.write("Preview not available. Chart will be visible in the presentation.")
                                             else:
                                                 st.error(error_msg or "Failed to create visualization. Please check your settings.")
                                         else:
